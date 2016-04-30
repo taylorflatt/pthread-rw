@@ -229,6 +229,7 @@ int main(int argc, char *argv[]) {
 	time_t t;
 	unsigned int seed;
 	int i;
+	void *result;
 
 	int READ_THREADS;			/* number of readers to create */
 	int WRITE_THREAD;			/* number of writers to create */
@@ -241,48 +242,75 @@ int main(int argc, char *argv[]) {
        the usage message using the usage() function defined above and exit. 
 	   For reference on getopt(), see "man getopt(3)" 
 	*/
-	/* YOUR CODE GOES HERE */
-	...
+	/* YOUR CODE GOES HERE (DONE) */
+	
+	
+	int c;
 
-
-
-
+    opterr = 0;
+    while ((c = getopt (argc, argv, "r:w:")) != -1)
+    switch (c)
+    {
+      case 'r':
+        READ_THREADS = optarg;
+        break;
+      case 'w':
+        WRITE_THREADS = optarg;
+        break;
+      default:
+        usage(argv[0]);
+    }
+	  
 	pthread_t* reader_idx = (pthread_t *) malloc(sizeof(pthread_t) * READ_THREADS;		/* holds thread IDs of readers */
 	pthread_t writer_idx  = (pthread_t *) malloc(sizeof(pthread_t) * WRITE_THREADS;		/* holds thread IDs of writers */
 	
 	/* create readers */
   	for (i = 0;i < READ_THREADS;i++) {
 		seed = (unsigned int) time(&t);
-		/* YOUR CODE GOES HERE */
-		...
-
-	
+		/* YOUR CODE GOES HERE (DONE) */
+		
+		// pthread_create returns a non-zero number if there was an error. 
+		if (pthread_create(reader_idx + i, NULL, reader_idx, (void *) (intptr_t) i) != 0) {
+        perror("pthread create");
+        exit(-1);
 	}
   	printf("Done creating reader threads!\n");
 
 	/* create writers */ 
   	for (i = 0;i < WRITE_THREADS;i++) {
 		seed = (unsigned int) time(&t);
-		/* YOUR CODE GOES HERE */
-  		...
-
-
-
+		/* YOUR CODE GOES HERE (DONE) */
+		
+		// pthread_create returns a non-zero number if there was an error. 
+		if (pthread_create(writer_idx + i, NULL, writer_idx, (void *) (intptr_t) i) != 0) {
+		  perror("pthread create");
+		  exit(-1);
+		}
 	}
 	printf("Done creating writer threads!\n");
 
   	/* Join all reader and writer threads.
-       YOUR CODE GOES HERE. 
+       (DONE)
     */
-	...
-
-
-
-
-	printf("Reader threads joined.\n");
- 
+	
+	 i = 0;
+	 while (i < NUM_W) {
+		pthread_join(writer_idx[i], &result);
+		printf("Joined %d with status: %ld\n", i, (intptr_t) result);
+		i++;
+	}
+	
 	printf("Writer threads joined.\n");
+	
+	i = 0;
+	while (i < NUM_R) {
+		pthread_join(reader_idx[i], &result);
+		printf("Joined %d with status: %ld\n", i, (intptr_t) result);
+		i++;
+	}
 
+	printf("Reader threads joined.\n"); 
+	
 	/* clean-up - always a good thing to do! */
  	pthread_mutex_destroy(&r_lock);
 	pthread_mutex_destroy(&rw_lock);
