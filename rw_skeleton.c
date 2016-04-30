@@ -149,6 +149,7 @@ void * reader_thr(void *arg) {
 
     int i, j;
 	int r_idx;
+	int read_count = 0;				/* Keeps track of the number of readers inside the CS */
 	unsigned char found;			/* For every read_acc[j], set to TRUE if found in account_list, else set to FALSE */
     account read_acc[READ_ITR];
 
@@ -187,15 +188,46 @@ void * reader_thr(void *arg) {
     for (j = 0; j < READ_ITR;j++) {
         /* Now read the shared data structure */
         found = FALSE;
-        for (i = 0; i < SIZE;i++) {
-            rest();
-            if (account_list[i].accno == read_acc[j].accno) {
-                /* Now lock and update */
-				/* YOUR CODE FOR THE READER GOES IN HERE */
-        		...
-
-
 		
+        for (i = 0; i < SIZE;i++) 
+		{
+            rest();
+			
+            if (account_list[i].accno == read_acc[j].accno) 
+			{
+                /* Now lock and update (DONE) */
+				
+				pthread_mutex_lock(&r_lock); // Lock the file against readers.
+				read_count++;
+				
+				if(read_count == 1)
+					pthread_mutex_lock(&rw_lock); // Lock the file against writers.
+				
+				pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
+				
+				fprintf(fd, "Account number = %d [%d], balance read = %6.2f\n",
+                        	account_list[i].accno, read_acc[j].accno, read_acc[j].balance);  
+        		
+				found = TRUE;
+			}
+			
+			else
+			{
+				found = FALSE;
+				
+				fprintf(fd, "Failed to find account number %d!\n", read_acc[j].accno);
+			}
+			
+			/* Now that we are finished reading, we need to clean up */
+			
+			pthread_mutex_lock(&r_lock);
+			
+			read_count--;
+			
+			if (read_count == 0)
+				pthread_mutex_unlock(&rw_lock); // Unlock the writer's restriction.
+			
+			pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 		}
 
         if (!found)
