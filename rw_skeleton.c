@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <rw.h>
+#include <unistd.h>
 
 #define SLOWNESS 30000
 
@@ -224,22 +225,24 @@ int main(int argc, char *argv[]) {
 	
 	int c;
 
-    opterr = 0;
     while ((c = getopt (argc, argv, "r:w:")) != -1)
     switch (c)
     {
       case 'r':
-        READ_THREADS = optarg;
+        READ_THREADS = atoi(optarg);
         break;
       case 'w':
-        WRITE_THREAD = optarg;
+        WRITE_THREAD = atoi(optarg);
         break;
       default:
         usage(argv[0]);
     }
+	
+	printf("Read: %d", READ_THREADS);
+	printf("Write: %d", WRITE_THREAD);
 	  
 	pthread_t* reader_idx = (pthread_t *) malloc(sizeof(pthread_t) * READ_THREADS);		/* holds thread IDs of readers */
-	pthread_t writer_idx  = (pthread_t *) malloc(sizeof(pthread_t) * WRITE_THREAD);		/* holds thread IDs of writers */
+	pthread_t* writer_idx  = (pthread_t *) malloc(sizeof(pthread_t) * WRITE_THREAD);		/* holds thread IDs of writers */
 	
 	/* create readers */
   	for (i = 0; i < READ_THREADS; i++) {
@@ -247,7 +250,7 @@ int main(int argc, char *argv[]) {
 		/* YOUR CODE GOES HERE (DONE) */
 		
 		// pthread_create returns a non-zero number if there was an error. 
-		if (pthread_create(reader_idx + i, NULL, reader_idx, (void *) (intptr_t) i) != 0) {
+		if (pthread_create(reader_idx + i, NULL, reader_thr, (void *) (intptr_t) i) != 0) {
         perror("pthread create");
         exit(-1);
 		}
@@ -260,7 +263,7 @@ int main(int argc, char *argv[]) {
 		/* YOUR CODE GOES HERE (DONE) */
 		
 		// pthread_create returns a non-zero number if there was an error. 
-		if (pthread_create(writer_idx + i, NULL, writer_idx, (void *) (intptr_t) i) != 0) {
+		if (pthread_create(writer_idx + i, NULL, writer_thr, (void *) (intptr_t) i) != 0) {
 		  perror("pthread create");
 		  exit(-1);
 		}
@@ -273,7 +276,7 @@ int main(int argc, char *argv[]) {
 	
 	 i = 0;
 	 while (i < WRITE_THREAD) {
-		pthread_join(writer_idx, &result);
+		pthread_join(writer_idx[i], &result);
 		printf("Joined %d with status: %ld\n", i, (intptr_t) result);
 		i++;
 	}
@@ -295,3 +298,5 @@ int main(int argc, char *argv[]) {
 	
 	return 0;
 }
+	
+
