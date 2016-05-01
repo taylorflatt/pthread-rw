@@ -96,22 +96,31 @@ void * writer_thr(void * arg) {
    Takes as argument the seed for the srand() function. 
 */
 void * reader_thr(void *arg) {
+	printf("Debug: Entered reader_thr method. \n");
+	
 	printf("Reader thread ID %ld\n", pthread_self());
-    srand(*((unsigned int *) arg));   /* set random number seed for this reader */
-
+	
+	printf("Debug: Before srand.\n ");
+    srand(time(NULL));   /* set random number seed for this reader */
+	printf("Debug: After srand.\n ");
+	
     int i, j;
 	int r_idx;
 	int read_count = 0;				/* Keeps track of the number of readers inside the CS */
 	unsigned char found;			/* For every read_acc[j], set to TRUE if found in account_list, else set to FALSE */
     account read_acc[READ_ITR];
+	
+	printf("Debug: After initializers.\n ");
 
     /* first create a random data set of account updates */
     for (i = 0; i < READ_ITR;i++) {
+		//printf("Debug: Entered the first for-loop (i = %d).\n", i);
         r_idx = rand() % SIZE;      /* a random number in the range [0, SIZE) */
         read_acc[i].accno = account_list[r_idx].accno;
         read_acc[i].balance = 0.0;		/* we are going to read in the value */
     }
-
+	
+	printf("Debug: After First for-loop. \n");
     /* open a reader thread log file */
 	char thr_fname[64];
 	snprintf(thr_fname, 64, "reader_%ld_thr.log", pthread_self());
@@ -136,18 +145,24 @@ void * reader_thr(void *arg) {
 
  	*/
 
+	printf("Debug: Before second for-loop.\n ");
+	
     /* The reader thread will now to read the shared account_list data structure */
-    for (j = 0; j < READ_ITR;j++) 
+    for (j = 0; j < READ_ITR; j++) 
 	{
         /* Now read the shared data structure */
         found = FALSE;
 		
-        for (i = 0; i < SIZE;i++) 
+		//printf("Debug: Entered second for-loop (j = %d).\n ", j);
+		
+        for (i = 0; i < SIZE; i++) 
 		{
             rest();
+			
+			//printf("Debug: Entered third for-loop (i = %d). \n", i);
 
 			if (account_list[i].accno == read_acc[j].accno) 
-			{
+			{				
 				/* Now lock and update (DONE) */
 
 				pthread_mutex_lock(&r_lock); // Lock the file against readers.
@@ -159,35 +174,33 @@ void * reader_thr(void *arg) {
 				pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 
 				fprintf(fd, "Account number = %d [%d], balance read = %6.2f\n",
-							account_list[i].accno, read_acc[j].accno, read_acc[j].balance);  
+							account_list[i].accno, read_acc[j].accno, read_acc[i].balance);  
 
 				found = TRUE;
+
+				/* Now that we are finished reading, we need to clean up */
+
+				pthread_mutex_lock(&r_lock);
+
+				read_count--;
+
+				if (read_count == 0)
+					pthread_mutex_unlock(&rw_lock); // Unlock the writer's restriction.
+
+					pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 			}
-
-			else
-			{
-				found = FALSE;
-				
-				fprintf(fd, "Failed to find account number %d!\n", read_acc[j].accno);
-			}
-			
-			/* Now that we are finished reading, we need to clean up */
-
-			pthread_mutex_lock(&r_lock);
-
-			read_count--;
-
-			if (read_count == 0)
-				pthread_mutex_unlock(&rw_lock); // Unlock the writer's restriction.
-
-				pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 		}
 
 		if (!found)
+		{
 			fprintf(fd, "Failed to find account number %d!\n", read_acc[j].accno);
+			found = FALSE;
+		}
     }   // end test-set for-loop
 
     fclose(fd);
+	
+	printf("Debug: End of reader_thr method.\n ");
 	
     return NULL;
 }
@@ -197,10 +210,21 @@ void create_testset() {
 	time_t t;
 	srand(time(&t));
 	int i;	
+	
+	FILE *fd = fopen("test.log", "w");
+	if (!fd) {
+		fprintf(stderr,"Failed to test case log file \n");
+		pthread_exit(&errno);
+	}
+	
 	for (i = 0;i < SIZE;i++) {
 		account_list[i].accno = 1000 + rand() % RAND_MAX;
 		account_list[i].balance = 100 + rand() % MAX_BALANCE;
+		
+		fprintf(fd, "Account number = %d, balance = %6.2f\n", account_list[i].accno, account_list[i].balance);  
 	}	
+	
+	fclose(fd);
 	return;
 }
 
@@ -221,7 +245,7 @@ int main(int argc, char *argv[]) {
 	int WRITE_THREAD;			/* number of writers to create */
 	
 	/* Generate a list of account informations. This will be used as the input to the Reader/Writer threads. */
-	create_testset();
+	//create_testset();
 	
 	int c;
 
@@ -237,9 +261,6 @@ int main(int argc, char *argv[]) {
       default:
         usage(argv[0]);
     }
-	
-	printf("Read: %d", READ_THREADS);
-	printf("Write: %d", WRITE_THREAD);
 	  
 	pthread_t* reader_idx = (pthread_t *) malloc(sizeof(pthread_t) * READ_THREADS);		/* holds thread IDs of readers */
 	pthread_t* writer_idx  = (pthread_t *) malloc(sizeof(pthread_t) * WRITE_THREAD);		/* holds thread IDs of writers */
@@ -247,20 +268,22 @@ int main(int argc, char *argv[]) {
 	/* create readers */
   	for (i = 0; i < READ_THREADS; i++) {
 		seed = (unsigned int) time(&t);
+		
 		/* YOUR CODE GOES HERE (DONE) */
 		
-		// pthread_create returns a non-zero number if there was an error. 
-		if (pthread_create(reader_idx + i, NULL, reader_thr, (void *) (intptr_t) i) != 0) {
+		// pthread_create returns a non-zero number if there was an error.
+		if (pthread_create(reader_idx + i, NULL, reader_thr, (void *) (intptr_t) (seed + i) != 0)) {
         perror("pthread create");
+		printf("There was an error with the pthread_create method. ");
         exit(-1);
 		}
 	}
   	printf("Done creating reader threads!\n");
 
 	/* create writers */ 
-  	for (i = 0; i < WRITE_THREAD; i++) {
+/*  	for (i = 0; i < WRITE_THREAD; i++) {
 		seed = (unsigned int) time(&t);
-		/* YOUR CODE GOES HERE (DONE) */
+		
 		
 		// pthread_create returns a non-zero number if there was an error. 
 		if (pthread_create(writer_idx + i, NULL, writer_thr, (void *) (intptr_t) i) != 0) {
@@ -268,20 +291,20 @@ int main(int argc, char *argv[]) {
 		  exit(-1);
 		}
 	}
-	printf("Done creating writer threads!\n");
+	printf("Done creating writer threads!\n");*/
 
   	/* Join all reader and writer threads.
        (DONE)
     */
 	
-	 i = 0;
+/*	 i = 0;
 	 while (i < WRITE_THREAD) {
 		pthread_join(writer_idx[i], &result);
 		printf("Joined %d with status: %ld\n", i, (intptr_t) result);
 		i++;
 	}
 	
-	printf("Writer threads joined.\n");
+	printf("Writer threads joined.\n");*/
 	
 	i = 0;
 	while (i < READ_THREADS) {
