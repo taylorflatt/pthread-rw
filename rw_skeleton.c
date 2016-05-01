@@ -112,6 +112,7 @@ void * writer_thr(void * arg) {
     }   // end test-set for-loop
 	
 	fclose(fd);
+
 	return NULL;
 }
 
@@ -193,8 +194,6 @@ void * reader_thr(void *arg) {
 			if (account_list[i].accno == read_acc[j].accno) 
 			{
 				found = TRUE;
-				
-				/* Now lock and update (DONE) */
 				
 				pthread_mutex_lock(&r_lock); // Lock the file against readers.
 				read_count++;
@@ -280,17 +279,11 @@ int main(int argc, char *argv[]) {
 	
 	int c;
 	
-	// There are no arguments give, return an error.
-	if(argc == 1)
-	{
-		usage(argv[0]);
-		abort();
-	}
-	
 	// There is at least a single argument, parse it.
-	
 	while ((c = getopt (argc, argv, "r:w:")) != -1)
 	{
+		printf("Entered while loop. ");
+				
 		switch (c)
 		{
 			case '?':
@@ -303,12 +296,19 @@ int main(int argc, char *argv[]) {
 				
 			case 'w':
 				WRITE_THREAD = atoi(optarg);
-				break;
+				break;	
 				
 			default:
 				usage(argv[0]);
 				abort();
 		}
+	}
+	
+	// For any case in which we don't have a -r and/or -w:
+	for ( ; optind < argc; optind++) 
+	{
+		usage(argv[0]);
+		abort();
 	}
 	
 	pthread_t* reader_idx = (pthread_t *) malloc(sizeof(pthread_t) * READ_THREADS);		/* holds thread IDs of readers */
@@ -317,8 +317,6 @@ int main(int argc, char *argv[]) {
 	/* create readers */
   	for (i = 0; i < READ_THREADS; i++) {
 		seed = (unsigned int) time(&t);
-		
-		/* YOUR CODE GOES HERE (DONE) */
 		
 		// pthread_create returns a non-zero number if there was an error.
 		if (pthread_create(reader_idx + i, NULL, reader_thr, (void *) (intptr_t) i) != 0) {
@@ -370,5 +368,3 @@ int main(int argc, char *argv[]) {
 	
 	return 0;
 }
-	
-
