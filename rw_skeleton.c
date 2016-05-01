@@ -59,10 +59,16 @@ void * writer_thr(void * arg) {
 	
 	int temp_accno;
     /* The writer thread will now to update the shared account_list data structure */
+	
+	// This is the random data set. So this will traverse all of the accounts in read_acc.
     for (j = 0; j < WRITE_ITR;j++) {
         found = FALSE;
         /* Now update */
-        for (i = 0; i < SIZE;i++) {
+		
+		// This is the account list. So this will traverse ALL of the accounts until it finds the one fitting our account.
+        for (i = 0; i < SIZE;i++) 
+		{
+			
             if (account_list[i].accno == update_acc[j].accno) {
 				rest();                 /* makes the write long duration - PLACE THIS IN THE CORRECT PLACE SO AS TO INTRODUCE LATENCY IN WRITE before going for next 'j' */
 								
@@ -111,7 +117,7 @@ void * reader_thr(void *arg) {
 	
     int i, j;
 	int r_idx;
-	int read_count = 0;				/* Keeps track of the number of readers inside the CS */
+	//int read_count = 0;				/* Keeps track of the number of readers inside the CS */
 	unsigned char found;			/* For every read_acc[j], set to TRUE if found in account_list, else set to FALSE */
     account read_acc[READ_ITR];
 	
