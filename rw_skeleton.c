@@ -5,6 +5,7 @@
 #include <pthread.h>
 #include <rw.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #define SLOWNESS 30000
 
@@ -263,6 +264,24 @@ void usage(char *str) {
 	return;
 }
 
+int isInt(char *str)
+{
+	printf("Entered isInt. ");
+	
+    while (str != 0)
+    {
+        if (!isdigit(*str)) 
+		{
+			printf("Entered isDigit as false. ");
+           return FALSE;
+		}
+		
+        str++;
+    }
+	
+    return TRUE;
+}
+
 
 int main(int argc, char *argv[]) {
 	time_t t;
@@ -291,18 +310,42 @@ int main(int argc, char *argv[]) {
 				abort();
 				
 			case 'r':
-				READ_THREADS = atoi(optarg);
-				break;
+			{
+				if(isInt(optarg) == TRUE)
+				{
+					READ_THREADS = atoi(optarg);
+					break;
+				}
+				
+				else
+				{
+					usage(argv[0]);
+					abort();
+				}
+			}
 				
 			case 'w':
-				WRITE_THREAD = atoi(optarg);
-				break;	
+			{
+				if(isInt(optarg) == TRUE)
+				{
+					WRITE_THREAD = atoi(optarg);
+					break;
+				}
 				
+				else
+				{
+					usage(argv[0]);
+					abort();
+				}
+			}
+			
 			default:
 				usage(argv[0]);
 				abort();
 		}
 	}
+	
+	printf("After while loop. ");
 	
 	// For any case in which we don't have a -r and/or -w:
 	for ( ; optind < argc; optind++) 
@@ -368,3 +411,5 @@ int main(int argc, char *argv[]) {
 	
 	return 0;
 }
+	
+
