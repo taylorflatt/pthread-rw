@@ -1,3 +1,5 @@
+// gcc -Wall rw.c -o rw -pthread -I/home/taylor/C_Lab2/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -11,8 +13,8 @@
 
 // sleep function
 void rest() {
-    //usleep(SLOWNESS * (rand() % (READ_THREADS + WRITE_THREADS)));
-    usleep(100);
+    usleep(SLOWNESS * (rand() % (1)));
+    //usleep(100);
 }
 
 /* Global shared data structure */
@@ -94,6 +96,9 @@ void * writer_thr(void * arg) {
 
 /* Reader thread - will read the account_list data structure. 
    Takes as argument the seed for the srand() function. 
+    * 
+	* SIZE refers to the size of the TEST (read_acc) list.
+	* READER_ITR refers to the size of the real (account_list) list.
 */
 void * reader_thr(void *arg) {
 	printf("Debug: Entered reader_thr method. \n");
@@ -148,6 +153,8 @@ void * reader_thr(void *arg) {
 	printf("Debug: Before second for-loop.\n ");
 	
     /* The reader thread will now to read the shared account_list data structure */
+	
+	// This is the random data set. So this will traverse all of the accounts in read_acc.
     for (j = 0; j < READ_ITR; j++) 
 	{
         /* Now read the shared data structure */
@@ -155,16 +162,18 @@ void * reader_thr(void *arg) {
 		
 		//printf("Debug: Entered second for-loop (j = %d).\n ", j);
 		
+		// This is the account list. So this will traverse ALL of the accounts until it finds the one fitting our account.
         for (i = 0; i < SIZE; i++) 
 		{
-            rest();
-			
 			//printf("Debug: Entered third for-loop (i = %d). \n", i);
-
+			rest();
+			
 			if (account_list[i].accno == read_acc[j].accno) 
-			{				
+			{
+				found = TRUE;
+				
 				/* Now lock and update (DONE) */
-
+				
 				pthread_mutex_lock(&r_lock); // Lock the file against readers.
 				read_count++;
 
@@ -172,11 +181,10 @@ void * reader_thr(void *arg) {
 					pthread_mutex_lock(&rw_lock); // Lock the file against writers.
 
 				pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
+				
+				read_acc[j].balance = account_list[i].balance;
 
-				fprintf(fd, "Account number = %d [%d], balance read = %6.2f\n",
-							account_list[i].accno, read_acc[j].accno, read_acc[i].balance);  
-
-				found = TRUE;
+				fprintf(fd, "Account number = %d [%d], balance read = %6.2f\n", account_list[i].accno, read_acc[j].accno, read_acc[j].balance);  
 
 				/* Now that we are finished reading, we need to clean up */
 
@@ -187,10 +195,10 @@ void * reader_thr(void *arg) {
 				if (read_count == 0)
 					pthread_mutex_unlock(&rw_lock); // Unlock the writer's restriction.
 
-					pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
+				pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 			}
 		}
-
+		
 		if (!found)
 		{
 			fprintf(fd, "Failed to find account number %d!\n", read_acc[j].accno);
@@ -245,7 +253,7 @@ int main(int argc, char *argv[]) {
 	int WRITE_THREAD;			/* number of writers to create */
 	
 	/* Generate a list of account informations. This will be used as the input to the Reader/Writer threads. */
-	//create_testset();
+	create_testset();
 	
 	int c;
 
