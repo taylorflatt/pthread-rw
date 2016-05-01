@@ -270,35 +270,45 @@ int main(int argc, char *argv[]) {
 	unsigned int seed;
 	int i;
 	void *result;
+	int index;
 
-	int READ_THREADS;			/* number of readers to create */
-	int WRITE_THREAD;			/* number of writers to create */
+	int READ_THREADS = 0;			/* number of readers to create */
+	int WRITE_THREAD = 0;			/* number of writers to create */
 	
 	/* Generate a list of account informations. This will be used as the input to the Reader/Writer threads. */
 	create_testset();
 	
 	int c;
-
-    while ((c = getopt (argc, argv, "r:w:")) != -1)
+	
+	// There are no arguments give, return an error.
+	if(argc == 1)
+	{
+		usage(argv[0]);
+		abort();
+	}
+	
+	// There is at least a single argument, parse it.
+	
+	while ((c = getopt (argc, argv, "r:w:")) != -1)
 	{
 		switch (c)
 		{
+			case '?':
+				usage(argv[0]);
+				abort();
+				
 			case 'r':
 				READ_THREADS = atoi(optarg);
 				break;
+				
 			case 'w':
 				WRITE_THREAD = atoi(optarg);
 				break;
+				
 			default:
 				usage(argv[0]);
 				abort();
 		}
-	}
-	
-	if(c == -1)
-	{
-		usage(argv[0]);
-		abort();
 	}
 	
 	pthread_t* reader_idx = (pthread_t *) malloc(sizeof(pthread_t) * READ_THREADS);		/* holds thread IDs of readers */
@@ -317,6 +327,7 @@ int main(int argc, char *argv[]) {
         exit(-1);
 		}
 	}
+	
   	printf("Done creating reader threads!\n");
 
 	/* create writers */ 
@@ -329,6 +340,7 @@ int main(int argc, char *argv[]) {
 		  exit(-1);
 		}
 	}
+	
 	printf("Done creating writer threads!\n");
 
   	/* Join all reader and writer threads.
