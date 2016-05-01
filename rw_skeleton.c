@@ -15,7 +15,6 @@
 // sleep function
 void rest() {
     usleep(SLOWNESS * (rand() % (1)));
-    //usleep(100);
 }
 
 /* Global shared data structure */
@@ -38,7 +37,7 @@ void * writer_thr(void * arg) {
 	account update_acc[WRITE_ITR];
 
 	/* first create a random data set of account updates */
-	for (i = 0; i < WRITE_ITR;i++) {
+	for (i = 0; i < WRITE_ITR; i++) {
 		r_idx = rand() % SIZE;		/* a random number in the range [0, SIZE) */ 
 		update_acc[i].accno = account_list[r_idx].accno;
 		update_acc[i].balance = 1000.0 + (float) (rand() % MAX_BALANCE);
@@ -47,7 +46,9 @@ void * writer_thr(void * arg) {
 	char thr_fname[64];
 	snprintf(thr_fname, 64, "writer_%ld_thr.log", pthread_self());
 	FILE* fd = fopen(thr_fname, "w");
-	if (!fd) {
+	
+	if (!fd) 
+	{
 		fprintf(stderr,"Failed to open writer log file %s\n", thr_fname);
 		pthread_exit(&errno);
 	}
@@ -70,20 +71,7 @@ void * writer_thr(void * arg) {
 		// This is the account list. So this will traverse ALL of the accounts until it finds the one fitting our account.
         for (i = 0; i < SIZE;i++) 
 		{
-			
             if (account_list[i].accno == update_acc[j].accno) {
-				
-				/* lock and update location */
-                /* You MUST FIRST TEMPORARILY INVALIDATE the accno by setting account_list[i] = INVALID_ACCNO; before making any updates to the account_list[i].balance.
-				   Once the account balance is updated, you MUST put the rest() call in the appropriate place before going for update_acc[j+1]. 
-				   This is to enable detecting race condition with reader threads violating CS entry criteria.
- 				   For every successful update to the account_list, you must write a log entry using the following format string:
-						 fprintf(fd, "Account number = %d [%d]: old balance = %6.2f, new balance = %6.2f\n",
-                        				account_list[i].accno, update_acc[j].accno, account_list[i].balance, update_acc[j].balance);
-				   
-				   Additionally, your code must also introduce checks/test to detect possible corruption due to race condition from CS violations.	
-				*/
-				/* YOUR CODE FOR THE WRITER GOES IN HERE */
 				
 				pthread_mutex_lock(&rw_lock); // Acquire read/write lock.
 				// Update location? //
@@ -124,37 +112,32 @@ void * writer_thr(void * arg) {
 	* READER_ITR refers to the size of the real (account_list) list.
 */
 void * reader_thr(void *arg) {
-	printf("Debug: Entered reader_thr method. \n");
-	
 	printf("Reader thread ID %ld\n", pthread_self());
 	
-	printf("Debug: Before srand.\n ");
-    //srand(*((unsigned int *) arg));   /* set random number seed for this reader */
-	srand(time(NULL));
-	printf("Debug: After srand.\n ");
+    //srand(*((unsigned int *) arg));   
+	srand(time(NULL)); /* set random number seed for this reader */
 	
     int i, j;
 	int r_idx;
 	//int read_count = 0;				/* Keeps track of the number of readers inside the CS */
 	unsigned char found;			/* For every read_acc[j], set to TRUE if found in account_list, else set to FALSE */
     account read_acc[READ_ITR];
-	
-	printf("Debug: After initializers.\n ");
 
     /* first create a random data set of account updates */
-    for (i = 0; i < READ_ITR;i++) {
+    for (i = 0; i < READ_ITR; i++) {
 		//printf("Debug: Entered the first for-loop (i = %d).\n", i);
         r_idx = rand() % SIZE;      /* a random number in the range [0, SIZE) */
         read_acc[i].accno = account_list[r_idx].accno;
         read_acc[i].balance = 0.0;		/* we are going to read in the value */
     }
 	
-	printf("Debug: After First for-loop. \n");
     /* open a reader thread log file */
 	char thr_fname[64];
 	snprintf(thr_fname, 64, "reader_%ld_thr.log", pthread_self());
 	FILE *fd = fopen(thr_fname, "w");
-	if (!fd) {
+	
+	if (!fd) 
+	{
 		fprintf(stderr,"Failed to reader log file %s\n", thr_fname);
 		pthread_exit(&errno);
 	}
@@ -163,18 +146,10 @@ void * reader_thr(void *arg) {
 	   For each entry 'j' in the read_acc[] array, the reader will fetch the 
        corresponding balance from the account_list[] array and store in
        read_acc[j].balance. The reader will then make a log entry in the log file
-	   for every successful read from the account_list using the format: 
-			fprintf(fd, "Account number = %d [%d], balance read = %6.2f\n",
-                        	account_list[i].accno, read_acc[j].accno, read_acc[j].balance);  
-	   
-	   If it is unable to find a account number, then the following log entry must be
-	   made: fprintf(fd, "Failed to find account number %d!\n", read_acc[j].accno);
-
-	   Additionally, your code must also introduce checks/test to detect possible corruption due to race condition from CS violations.	
-
+	   for every successful read from the account_list.
+	
+	   If it is unable to find a account number, then a log entry is made.
  	*/
-
-	printf("Debug: Before second for-loop.\n ");
 	
     /* The reader thread will now to read the shared account_list data structure */
 	
@@ -183,8 +158,6 @@ void * reader_thr(void *arg) {
 	{
         /* Now read the shared data structure */
         found = FALSE;
-		
-		//printf("Debug: Entered second for-loop (j = %d).\n ", j);
 		
 		// This is the account list. So this will traverse ALL of the accounts until it finds the one fitting our account.
         for (i = 0; i < SIZE; i++) 
@@ -229,8 +202,6 @@ void * reader_thr(void *arg) {
     }   // end test-set for-loop
 
     fclose(fd);
-	
-	printf("Debug: End of reader_thr method.\n ");
 	
     return NULL;
 }
@@ -283,7 +254,6 @@ int main(int argc, char *argv[]) {
 	unsigned int seed;
 	int i;
 	void *result;
-	int index;
 
 	int READ_THREADS = 0;			/* number of readers to create */
 	int WRITE_THREAD = 0;			/* number of writers to create */
@@ -292,7 +262,7 @@ int main(int argc, char *argv[]) {
 	create_testset();
 	
 	int c;
-	
+		
 	// There is at least a single argument, parse it.
 	while ((c = getopt (argc, argv, "r:w:")) != -1)
 	{
@@ -303,9 +273,7 @@ int main(int argc, char *argv[]) {
 				abort();
 				
 			case 'r':
-			{
-				printf("r = %d \n ", atoi(optarg));
-				
+			{				
 				if(isInt(optarg) == TRUE)
 				{
 					READ_THREADS = atoi(optarg);
@@ -351,27 +319,31 @@ int main(int argc, char *argv[]) {
 	pthread_t* writer_idx  = (pthread_t *) malloc(sizeof(pthread_t) * WRITE_THREAD);		/* holds thread IDs of writers */
 	
 	/* create readers */
-  	for (i = 0; i < READ_THREADS; i++) {
+  	for (i = 0; i < READ_THREADS; i++) 
+	{		
 		seed = (unsigned int) time(&t);
 		
 		// pthread_create returns a non-zero number if there was an error.
-		if (pthread_create(reader_idx + i, NULL, reader_thr, (void *) (intptr_t) i) != 0) {
-        perror("pthread create");
-		printf("There was an error with the pthread_create method. ");
-        exit(-1);
+		if (pthread_create(reader_idx + i, NULL, reader_thr, (void *) (intptr_t) i) != 0) 
+		{
+			perror("pthread create");
+			exit(-1);
 		}
 	}
 	
   	printf("Done creating reader threads!\n");
 
 	/* create writers */ 
-  	for (i = 0; i < WRITE_THREAD; i++) {
+  	for (i = 0; i < WRITE_THREAD; i++) 
+	{
 		seed = (unsigned int) time(&t);
 		
 		// pthread_create returns a non-zero number if there was an error. 
-		if (pthread_create(writer_idx + i, NULL, writer_thr, (void *) (intptr_t) i) != 0) {
-		  perror("pthread create");
-		  exit(-1);
+		if (pthread_create(writer_idx + i, NULL, writer_thr, (void *) (intptr_t) i) != 0) 
+		{
+			printf("Error with write_thread. !\n");
+			perror("pthread create");
+			exit(-1);
 		}
 	}
 	
@@ -390,7 +362,8 @@ int main(int argc, char *argv[]) {
 	printf("Writer threads joined.\n");
 	
 	i = 0;
-	while (i < READ_THREADS) {
+	while (i < READ_THREADS) 
+	{
 		pthread_join(reader_idx[i], &result);
 		printf("Joined %d with status: %ld\n", i, (intptr_t) result);
 		i++;
@@ -404,5 +377,3 @@ int main(int argc, char *argv[]) {
 	
 	return 0;
 }
-	
-
