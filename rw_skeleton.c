@@ -266,17 +266,16 @@ void usage(char *str) {
 
 int isInt(char *str)
 {
-	printf("Entered isInt. ");
+	printf("Entered isInt.\n ");
 	
-    while (str != 0)
+    while (*str)
     {
-        if (!isdigit(*str)) 
+        if (!isdigit(*str++)) 
 		{
-			printf("Entered isDigit as false. ");
+			printf("Entered isDigit as false.\n ");
+			
            return FALSE;
 		}
-		
-        str++;
     }
 	
     return TRUE;
@@ -301,7 +300,7 @@ int main(int argc, char *argv[]) {
 	// There is at least a single argument, parse it.
 	while ((c = getopt (argc, argv, "r:w:")) != -1)
 	{
-		printf("Entered while loop. ");
+		printf("Entered while loop.\n ");
 				
 		switch (c)
 		{
@@ -311,6 +310,8 @@ int main(int argc, char *argv[]) {
 				
 			case 'r':
 			{
+				printf("r = %d \n ", atoi(optarg));
+				
 				if(isInt(optarg) == TRUE)
 				{
 					READ_THREADS = atoi(optarg);
@@ -345,7 +346,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
-	printf("After while loop. ");
+	printf("After while loop.\n ");
 	
 	// For any case in which we don't have a -r and/or -w:
 	for ( ; optind < argc; optind++) 
@@ -411,5 +412,3 @@ int main(int argc, char *argv[]) {
 	
 	return 0;
 }
-	
-
