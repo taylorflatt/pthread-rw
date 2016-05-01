@@ -29,7 +29,7 @@ int read_count = 0;											/* keeps track of number of readers inside the CS 
 */
 void * writer_thr(void * arg) {
 	printf("Writer thread ID %ld\n", pthread_self());	
-	srand(*((unsigned int *) arg));		/* set random number seed for this writer */
+	srand(time(NULL));		/* set random number seed for this writer */
 	
 	int i, j;
 	int r_idx;
@@ -60,7 +60,7 @@ void * writer_thr(void * arg) {
 	int temp_accno;
     /* The writer thread will now to update the shared account_list data structure */
 	
-	// This is the random data set. So this will traverse all of the accounts in read_acc.
+	// This is the random data set. So this will traverse all of the accounts in update_acc.
     for (j = 0; j < WRITE_ITR;j++) {
         found = FALSE;
         /* Now update */
@@ -70,15 +70,8 @@ void * writer_thr(void * arg) {
 		{
 			
             if (account_list[i].accno == update_acc[j].accno) {
-				rest();                 /* makes the write long duration - PLACE THIS IN THE CORRECT PLACE SO AS TO INTRODUCE LATENCY IN WRITE before going for next 'j' */
-								
 				
-				pthread_mutex_lock(&rw_lock); // Acquire read/write lock.
-				// Update location? //
-				
-				account_list[i].accno = INVALID_ACCNO; // Temporarily invalidate accno.
-				
-                /* lock and update location */
+				/* lock and update location */
                 /* You MUST FIRST TEMPORARILY INVALIDATE the accno by setting account_list[i] = INVALID_ACCNO; before making any updates to the account_list[i].balance.
 				   Once the account balance is updated, you MUST put the rest() call in the appropriate place before going for update_acc[j+1]. 
 				   This is to enable detecting race condition with reader threads violating CS entry criteria.
@@ -89,8 +82,24 @@ void * writer_thr(void * arg) {
 				   Additionally, your code must also introduce checks/test to detect possible corruption due to race condition from CS violations.	
 				*/
 				/* YOUR CODE FOR THE WRITER GOES IN HERE */
+				
+				pthread_mutex_lock(&rw_lock); // Acquire read/write lock.
+				// Update location? //
+				
+				account_list[i].accno = INVALID_ACCNO; // Temporarily invalidate accno.
+				
+				fprintf(fd, "Account number = %d [%d]: old balance = %6.2f, new balance = %6.2f\n", account_list[i].accno, update_acc[j].accno, account_list[i].balance, update_acc[j].balance);
+				
+				account_list[i].balance = update_acc[j].balance;
+				
+				account_list[i].accno = update_acc[j].accno;
+				
+				rest();                 /* makes the write long duration - PLACE THIS IN THE CORRECT PLACE SO AS TO INTRODUCE LATENCY IN WRITE before going for next 'j' */
+				
+				pthread_mutex_unlock(&rw_lock);
 			}
         }
+		
         if (!found)
             fprintf(fd, "Failed to find account number %d!\n", update_acc[j].accno);
 
@@ -295,7 +304,7 @@ int main(int argc, char *argv[]) {
   	printf("Done creating reader threads!\n");
 
 	/* create writers */ 
-/*  	for (i = 0; i < WRITE_THREAD; i++) {
+  	for (i = 0; i < WRITE_THREAD; i++) {
 		seed = (unsigned int) time(&t);
 		
 		
@@ -305,20 +314,20 @@ int main(int argc, char *argv[]) {
 		  exit(-1);
 		}
 	}
-	printf("Done creating writer threads!\n");*/
+	printf("Done creating writer threads!\n");
 
   	/* Join all reader and writer threads.
        (DONE)
     */
 	
-/*	 i = 0;
+	 i = 0;
 	 while (i < WRITE_THREAD) {
 		pthread_join(writer_idx[i], &result);
 		printf("Joined %d with status: %ld\n", i, (intptr_t) result);
 		i++;
 	}
 	
-	printf("Writer threads joined.\n");*/
+	printf("Writer threads joined.\n");
 	
 	i = 0;
 	while (i < READ_THREADS) {
