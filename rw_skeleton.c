@@ -259,23 +259,19 @@ void create_testset() {
 }
 
 
+/* Prints the using statement for invalid command line execution syntax */
 void usage(char *str) {
 	printf("Usage: %s -r <NUM_READERS> -w <NUM_WRITERS>\n", str);
 	return;
 }
 
+/* Returns TRUE if str is a natural number (aka no negatives) or FALSE otherwise. */
 int isInt(char *str)
 {
-	printf("Entered isInt.\n ");
-	
     while (*str)
     {
         if (!isdigit(*str++)) 
-		{
-			printf("Entered isDigit as false.\n ");
-			
            return FALSE;
-		}
     }
 	
     return TRUE;
@@ -300,8 +296,6 @@ int main(int argc, char *argv[]) {
 	// There is at least a single argument, parse it.
 	while ((c = getopt (argc, argv, "r:w:")) != -1)
 	{
-		printf("Entered while loop.\n ");
-				
 		switch (c)
 		{
 			case '?':
@@ -345,8 +339,6 @@ int main(int argc, char *argv[]) {
 				abort();
 		}
 	}
-	
-	printf("After while loop.\n ");
 	
 	// For any case in which we don't have a -r and/or -w:
 	for ( ; optind < argc; optind++) 
@@ -412,3 +404,5 @@ int main(int argc, char *argv[]) {
 	
 	return 0;
 }
+	
+
