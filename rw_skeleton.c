@@ -58,6 +58,7 @@ void * writer_thr(void * arg) {
 	*/
 	
 	int temp_accno;
+	float temp_balance;
     /* The writer thread will now to update the shared account_list data structure */
 	
 	// This is the random data set. So this will traverse all of the accounts in update_acc.
@@ -86,13 +87,18 @@ void * writer_thr(void * arg) {
 				pthread_mutex_lock(&rw_lock); // Acquire read/write lock.
 				// Update location? //
 				
-				account_list[i].accno = INVALID_ACCNO; // Temporarily invalidate accno.
+				temp_accno = account_list[i].accno; // Store the account number.
+				temp_balance = account_list[i].balance; // Store the account balance.
 				
-				fprintf(fd, "Account number = %d [%d]: old balance = %6.2f, new balance = %6.2f\n", account_list[i].accno, update_acc[j].accno, account_list[i].balance, update_acc[j].balance);
+				account_list[i].accno = INVALID_ACCNO; // Temporarily invalidate the account number.
 				
-				account_list[i].balance = update_acc[j].balance;
+				account_list[i].balance = update_acc[j].balance; // Update the balance of the account.
 				
-				account_list[i].accno = update_acc[j].accno;
+				account_list[i].accno = temp_accno; // Set the account number back to its original number.
+				
+				fprintf(fd, "Account number = %d [%d]: old balance = %6.2f, new balance = %6.2f\n", account_list[i].accno, update_acc[j].accno, temp_balance, update_acc[j].balance);
+				
+				found = TRUE;
 				
 				rest();                 /* makes the write long duration - PLACE THIS IN THE CORRECT PLACE SO AS TO INTRODUCE LATENCY IN WRITE before going for next 'j' */
 				
@@ -121,7 +127,8 @@ void * reader_thr(void *arg) {
 	printf("Reader thread ID %ld\n", pthread_self());
 	
 	printf("Debug: Before srand.\n ");
-    srand(time(NULL));   /* set random number seed for this reader */
+    //srand(*((unsigned int *) arg));   /* set random number seed for this reader */
+	srand(time(NULL));
 	printf("Debug: After srand.\n ");
 	
     int i, j;
@@ -273,18 +280,27 @@ int main(int argc, char *argv[]) {
 	int c;
 
     while ((c = getopt (argc, argv, "r:w:")) != -1)
-    switch (c)
-    {
-      case 'r':
-        READ_THREADS = atoi(optarg);
-        break;
-      case 'w':
-        WRITE_THREAD = atoi(optarg);
-        break;
-      default:
-        usage(argv[0]);
-    }
-	  
+	{
+		switch (c)
+		{
+			case 'r':
+				READ_THREADS = atoi(optarg);
+				break;
+			case 'w':
+				WRITE_THREAD = atoi(optarg);
+				break;
+			default:
+				usage(argv[0]);
+				abort();
+		}
+	}
+	
+	if(c == -1)
+	{
+		usage(argv[0]);
+		abort();
+	}
+	
 	pthread_t* reader_idx = (pthread_t *) malloc(sizeof(pthread_t) * READ_THREADS);		/* holds thread IDs of readers */
 	pthread_t* writer_idx  = (pthread_t *) malloc(sizeof(pthread_t) * WRITE_THREAD);		/* holds thread IDs of writers */
 	
@@ -295,7 +311,7 @@ int main(int argc, char *argv[]) {
 		/* YOUR CODE GOES HERE (DONE) */
 		
 		// pthread_create returns a non-zero number if there was an error.
-		if (pthread_create(reader_idx + i, NULL, reader_thr, (void *) (intptr_t) (seed + i) != 0)) {
+		if (pthread_create(reader_idx + i, NULL, reader_thr, (void *) (intptr_t) i) != 0) {
         perror("pthread create");
 		printf("There was an error with the pthread_create method. ");
         exit(-1);
@@ -307,7 +323,6 @@ int main(int argc, char *argv[]) {
   	for (i = 0; i < WRITE_THREAD; i++) {
 		seed = (unsigned int) time(&t);
 		
-		
 		// pthread_create returns a non-zero number if there was an error. 
 		if (pthread_create(writer_idx + i, NULL, writer_thr, (void *) (intptr_t) i) != 0) {
 		  perror("pthread create");
@@ -317,7 +332,6 @@ int main(int argc, char *argv[]) {
 	printf("Done creating writer threads!\n");
 
   	/* Join all reader and writer threads.
-       (DONE)
     */
 	
 	 i = 0;
