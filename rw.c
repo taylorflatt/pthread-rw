@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <rw.h>
+#include "rw.h"
 #include <unistd.h>
 #include <ctype.h>
 
@@ -71,10 +71,14 @@ void * writer_thr(void * arg) {
 		// This is the account list. So this will traverse ALL of the accounts until it finds the one fitting our account.
         for (i = 0; i < SIZE;i++) 
 		{
-            if (account_list[i].accno == update_acc[j].accno) {
+			// We rest to give us time to check CS violations.
+			rest();
+			
+            if (account_list[i].accno == update_acc[j].accno) 
+            {
+				found = TRUE;
 				
 				pthread_mutex_lock(&rw_lock); // Acquire read/write lock.
-				// Update location? //
 				
 				temp_accno = account_list[i].accno; // Store the account number.
 				temp_balance = account_list[i].balance; // Store the account balance.
@@ -86,10 +90,6 @@ void * writer_thr(void * arg) {
 				account_list[i].accno = temp_accno; // Set the account number back to its original number.
 				
 				fprintf(fd, "Account number = %d [%d]: old balance = %6.2f, new balance = %6.2f\n", account_list[i].accno, update_acc[j].accno, temp_balance, update_acc[j].balance);
-				
-				found = TRUE;
-				
-				rest();                 /* makes the write long duration - PLACE THIS IN THE CORRECT PLACE SO AS TO INTRODUCE LATENCY IN WRITE before going for next 'j' */
 				
 				pthread_mutex_unlock(&rw_lock);
 			}
@@ -163,12 +163,9 @@ void * reader_thr(void *arg) {
         for (i = 0; i < SIZE; i++) 
 		{
 			//printf("Debug: Entered third for-loop (i = %d). \n", i);
-			rest();
 			
 			if (account_list[i].accno == read_acc[j].accno) 
 			{
-				found = TRUE;
-				
 				pthread_mutex_lock(&r_lock); // Lock the file against readers.
 				read_count++;
 
@@ -176,6 +173,11 @@ void * reader_thr(void *arg) {
 					pthread_mutex_lock(&rw_lock); // Lock the file against writers.
 
 				pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
+				
+				// We rest here so that in the event the writer enters the CS, we don't read the value.
+				read();
+				
+				found = TRUE;
 				
 				read_acc[j].balance = account_list[i].balance;
 
