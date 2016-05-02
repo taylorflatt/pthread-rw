@@ -1,4 +1,4 @@
-// gcc -Wall rw.c -o rw -pthread -I/home/taylor/C_Lab2/
+// Created by Taylor Flatt for CS 306.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,9 +8,7 @@
 #include <ctype.h>
 
 #define SLOWNESS 30000
-
 #define INVALID_ACCNO -99999
-
 
 // sleep function
 void rest() {
@@ -78,7 +76,7 @@ void * writer_thr(void * arg) {
             {
 				found = TRUE;
 				
-				pthread_mutex_lock(&rw_lock); // Acquire read/write lock.
+				pthread_mutex_lock(&rw_lock); // Acquire rw lock.
 				
 				temp_accno = account_list[i].accno; // Store the account number.
 				temp_balance = account_list[i].balance; // Store the account balance.
@@ -91,7 +89,7 @@ void * writer_thr(void * arg) {
 				
 				fprintf(fd, "Account number = %d [%d]: old balance = %6.2f, new balance = %6.2f\n", account_list[i].accno, update_acc[j].accno, temp_balance, update_acc[j].balance);
 				
-				pthread_mutex_unlock(&rw_lock);
+				pthread_mutex_unlock(&rw_lock); // Unlock the rw lock.
 			}
         }
 		
@@ -119,7 +117,6 @@ void * reader_thr(void *arg) {
 	
     int i, j;
 	int r_idx;
-	//int read_count = 0;				/* Keeps track of the number of readers inside the CS */
 	unsigned char found;			/* For every read_acc[j], set to TRUE if found in account_list, else set to FALSE */
     account read_acc[READ_ITR];
 
@@ -179,15 +176,15 @@ void * reader_thr(void *arg) {
 				
 				found = TRUE;
 				
-				read_acc[j].balance = account_list[i].balance;
+				read_acc[j].balance = account_list[i].balance; // Grab the balance.
 
 				fprintf(fd, "Account number = %d [%d], balance read = %6.2f\n", account_list[i].accno, read_acc[j].accno, read_acc[j].balance);  
 
 				/* Now that we are finished reading, we need to clean up */
 
-				pthread_mutex_lock(&r_lock);
+				pthread_mutex_lock(&r_lock); // Acquire r lock.
 
-				read_count--;
+				read_count--; // We are done reading so reduce the read count.
 
 				if (read_count == 0)
 					pthread_mutex_unlock(&rw_lock); // Unlock the writer's restriction.
@@ -228,9 +225,9 @@ void create_testset() {
 	}	
 	
 	fclose(fd);
+	
 	return;
 }
-
 
 /* Prints the using statement for invalid command line execution syntax */
 void usage(char *str) {
@@ -250,15 +247,14 @@ int isInt(char *str)
     return TRUE;
 }
 
-
 int main(int argc, char *argv[]) {
 	time_t t;
 	unsigned int seed;
 	int i;
 	void *result;
 
-	int READ_THREADS = 0;			/* number of readers to create */
-	int WRITE_THREAD = 0;			/* number of writers to create */
+	int READ_THREADS = 0;			/* number of readers to create. */
+	int WRITE_THREAD = 0;			/* number of writers to create. */
 	
 	/* Generate a list of account informations. This will be used as the input to the Reader/Writer threads. */
 	create_testset();
@@ -373,7 +369,7 @@ int main(int argc, char *argv[]) {
 
 	printf("Reader threads joined.\n"); 
 	
-	/* clean-up - always a good thing to do! */
+	/* Destroy any remaining locks. */
  	pthread_mutex_destroy(&r_lock);
 	pthread_mutex_destroy(&rw_lock);
 	
