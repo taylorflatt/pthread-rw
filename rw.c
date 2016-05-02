@@ -249,7 +249,6 @@ int isInt(char *str)
 
 int main(int argc, char *argv[]) {
 	time_t t;
-	unsigned int seed;
 	int i;
 	void *result;
 
@@ -319,8 +318,6 @@ int main(int argc, char *argv[]) {
 	/* create readers */
   	for (i = 0; i < READ_THREADS; i++) 
 	{		
-		seed = (unsigned int) time(&t);
-		
 		// pthread_create returns a non-zero number if there was an error.
 		if (pthread_create(reader_idx + i, NULL, reader_thr, (void *) (intptr_t) i) != 0) 
 		{
@@ -333,9 +330,7 @@ int main(int argc, char *argv[]) {
 
 	/* create writers */ 
   	for (i = 0; i < WRITE_THREAD; i++) 
-	{
-		seed = (unsigned int) time(&t);
-		
+	{		
 		// pthread_create returns a non-zero number if there was an error. 
 		if (pthread_create(writer_idx + i, NULL, writer_thr, (void *) (intptr_t) i) != 0) 
 		{
