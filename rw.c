@@ -1,9 +1,9 @@
-// Created by Taylor Flatt for CS 306.
+// gcc -Wall rw.c -o rw -pthread -I/home/taylor/C_Lab2/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include "rw.h"
+#include <rw.h>
 #include <unistd.h>
 #include <ctype.h>
 
@@ -62,22 +62,18 @@ void * writer_thr(void * arg) {
     /* The writer thread will now to update the shared account_list data structure */
 	
 	// This is the random data set. So this will traverse all of the accounts in update_acc.
-    for (j = 0; j < WRITE_ITR;j++) {
+    for (j = 0; j < WRITE_ITR; j++) {
         found = FALSE;
         /* Now update */
 		
 		// This is the account list. So this will traverse ALL of the accounts until it finds the one fitting our account.
         for (i = 0; i < SIZE;i++) 
 		{
-			// We rest to give us time to check CS violations.
-			rest();
+			//rest();
+			pthread_mutex_lock(&rw_lock); // Acquire read/write lock.
 			
             if (account_list[i].accno == update_acc[j].accno) 
-            {
-				found = TRUE;
-				
-				pthread_mutex_lock(&rw_lock); // Acquire rw lock.
-				
+			{
 				temp_accno = account_list[i].accno; // Store the account number.
 				temp_balance = account_list[i].balance; // Store the account balance.
 				
@@ -89,8 +85,12 @@ void * writer_thr(void * arg) {
 				
 				fprintf(fd, "Account number = %d [%d]: old balance = %6.2f, new balance = %6.2f\n", account_list[i].accno, update_acc[j].accno, temp_balance, update_acc[j].balance);
 				
-				pthread_mutex_unlock(&rw_lock); // Unlock the rw lock.
+				found = TRUE;
+				
+				rest();                 /* makes the write long duration - PLACE THIS IN THE CORRECT PLACE SO AS TO INTRODUCE LATENCY IN WRITE before going for next 'j' */
 			}
+			
+			pthread_mutex_unlock(&rw_lock);
         }
 		
         if (!found)
@@ -111,12 +111,11 @@ void * writer_thr(void * arg) {
 */
 void * reader_thr(void *arg) {
 	printf("Reader thread ID %ld\n", pthread_self());
-	
-    //srand(*((unsigned int *) arg));   
 	srand(time(NULL)); /* set random number seed for this reader */
 	
     int i, j;
 	int r_idx;
+	//int read_count = 0;				/* Keeps track of the number of readers inside the CS */
 	unsigned char found;			/* For every read_acc[j], set to TRUE if found in account_list, else set to FALSE */
     account read_acc[READ_ITR];
 
@@ -159,10 +158,12 @@ void * reader_thr(void *arg) {
 		// This is the account list. So this will traverse ALL of the accounts until it finds the one fitting our account.
         for (i = 0; i < SIZE; i++) 
 		{
-			//printf("Debug: Entered third for-loop (i = %d). \n", i);
+			rest();
 			
 			if (account_list[i].accno == read_acc[j].accno) 
 			{
+				found = TRUE;
+				
 				pthread_mutex_lock(&r_lock); // Lock the file against readers.
 				read_count++;
 
@@ -171,20 +172,15 @@ void * reader_thr(void *arg) {
 
 				pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 				
-				// We rest here so that in the event the writer enters the CS, we don't read the value.
-				read();
-				
-				found = TRUE;
-				
-				read_acc[j].balance = account_list[i].balance; // Grab the balance.
+				read_acc[j].balance = account_list[i].balance;
 
 				fprintf(fd, "Account number = %d [%d], balance read = %6.2f\n", account_list[i].accno, read_acc[j].accno, read_acc[j].balance);  
 
 				/* Now that we are finished reading, we need to clean up */
 
-				pthread_mutex_lock(&r_lock); // Acquire r lock.
+				pthread_mutex_lock(&r_lock);
 
-				read_count--; // We are done reading so reduce the read count.
+				read_count--;
 
 				if (read_count == 0)
 					pthread_mutex_unlock(&rw_lock); // Unlock the writer's restriction.
@@ -229,9 +225,11 @@ void create_testset() {
 	return;
 }
 
+
 /* Prints the using statement for invalid command line execution syntax */
 void usage(char *str) {
 	printf("Usage: %s -r <NUM_READERS> -w <NUM_WRITERS>\n", str);
+	
 	return;
 }
 
@@ -247,13 +245,15 @@ int isInt(char *str)
     return TRUE;
 }
 
+
 int main(int argc, char *argv[]) {
 	time_t t;
+	//unsigned int seed;
 	int i;
 	void *result;
 
-	int READ_THREADS = 0;			/* number of readers to create. */
-	int WRITE_THREAD = 0;			/* number of writers to create. */
+	int READ_THREADS = 0;			/* number of readers to create */
+	int WRITE_THREAD = 0;			/* number of writers to create */
 	
 	/* Generate a list of account informations. This will be used as the input to the Reader/Writer threads. */
 	create_testset();
@@ -311,13 +311,15 @@ int main(int argc, char *argv[]) {
 		usage(argv[0]);
 		abort();
 	}
-	
+		
 	pthread_t* reader_idx = (pthread_t *) malloc(sizeof(pthread_t) * READ_THREADS);		/* holds thread IDs of readers */
 	pthread_t* writer_idx  = (pthread_t *) malloc(sizeof(pthread_t) * WRITE_THREAD);		/* holds thread IDs of writers */
 	
 	/* create readers */
   	for (i = 0; i < READ_THREADS; i++) 
 	{		
+		//seed(value) = (unsigned int) time(&t);
+		
 		// pthread_create returns a non-zero number if there was an error.
 		if (pthread_create(reader_idx + i, NULL, reader_thr, (void *) (intptr_t) i) != 0) 
 		{
@@ -330,7 +332,9 @@ int main(int argc, char *argv[]) {
 
 	/* create writers */ 
   	for (i = 0; i < WRITE_THREAD; i++) 
-	{		
+	{
+		//seed = (unsigned int) time(&t);
+		
 		// pthread_create returns a non-zero number if there was an error. 
 		if (pthread_create(writer_idx + i, NULL, writer_thr, (void *) (intptr_t) i) != 0) 
 		{
@@ -364,7 +368,7 @@ int main(int argc, char *argv[]) {
 
 	printf("Reader threads joined.\n"); 
 	
-	/* Destroy any remaining locks. */
+	/* clean-up - always a good thing to do! */
  	pthread_mutex_destroy(&r_lock);
 	pthread_mutex_destroy(&rw_lock);
 	
