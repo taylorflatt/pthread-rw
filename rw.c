@@ -75,6 +75,7 @@ void * writer_thr(void * arg) {
             if (account_list[i].accno == update_acc[j].accno) 
 			{
 				temp_accno = account_list[i].accno; // Store the account number.
+				
 				temp_balance = account_list[i].balance; // Store the account balance.
 				
 				account_list[i].accno = INVALID_ACCNO; // Temporarily invalidate the account number.
@@ -87,7 +88,7 @@ void * writer_thr(void * arg) {
 				
 				found = TRUE;
 				
-				rest();                 /* makes the write long duration - PLACE THIS IN THE CORRECT PLACE SO AS TO INTRODUCE LATENCY IN WRITE before going for next 'j' */
+				rest();                 /* makes the write long duration */
 			}
 			
 			pthread_mutex_unlock(&rw_lock);
@@ -160,33 +161,31 @@ void * reader_thr(void *arg) {
 		{
 			rest();
 			
+			pthread_mutex_lock(&r_lock); // Lock the file against readers.
+			read_count++;
+
+			if(read_count == 1)
+				pthread_mutex_lock(&rw_lock); // Lock the file against writers.
+
+			pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
+			
 			if (account_list[i].accno == read_acc[j].accno) 
 			{
 				found = TRUE;
 				
-				pthread_mutex_lock(&r_lock); // Lock the file against readers.
-				read_count++;
-
-				if(read_count == 1)
-					pthread_mutex_lock(&rw_lock); // Lock the file against writers.
-
-				pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
-				
 				read_acc[j].balance = account_list[i].balance;
 
 				fprintf(fd, "Account number = %d [%d], balance read = %6.2f\n", account_list[i].accno, read_acc[j].accno, read_acc[j].balance);  
-
-				/* Now that we are finished reading, we need to clean up */
-
-				pthread_mutex_lock(&r_lock);
-
-				read_count--;
-
-				if (read_count == 0)
-					pthread_mutex_unlock(&rw_lock); // Unlock the writer's restriction.
-
-				pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 			}
+			
+			pthread_mutex_lock(&r_lock);
+			
+			read_count--;
+
+			if (read_count == 0)
+				pthread_mutex_unlock(&rw_lock); // Unlock the writer's restriction.
+
+			pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 		}
 		
 		if (!found)
@@ -247,8 +246,6 @@ int isInt(char *str)
 
 
 int main(int argc, char *argv[]) {
-	time_t t;
-	//unsigned int seed;
 	int i;
 	void *result;
 
