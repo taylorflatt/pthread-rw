@@ -80,6 +80,8 @@ void * writer_thr(void * arg) {
 				
 				account_list[i].accno = INVALID_ACCNO; // Temporarily invalidate the account number.
 				
+				rest();                 /* makes the write long duration */
+				
 				account_list[i].balance = update_acc[j].balance; // Update the balance of the account.
 				
 				account_list[i].accno = temp_accno; // Set the account number back to its original number.
@@ -88,7 +90,7 @@ void * writer_thr(void * arg) {
 				
 				found = TRUE;
 				
-				rest();                 /* makes the write long duration */
+				
 			}
 			
 			pthread_mutex_unlock(&rw_lock);
