@@ -65,13 +65,12 @@ void * writer_thr(void * arg) {
     for (j = 0; j < WRITE_ITR; j++) {
         found = FALSE;
         /* Now update */
+        
+        pthread_mutex_lock(&rw_lock); // Acquire read/write lock.
 		
 		// This is the account list. So this will traverse ALL of the accounts until it finds the one fitting our account.
         for (i = 0; i < SIZE;i++) 
 		{
-			//rest();
-			pthread_mutex_lock(&rw_lock); // Acquire read/write lock.
-			
             if (account_list[i].accno == update_acc[j].accno) 
 			{
 				temp_accno = account_list[i].accno; // Store the account number.
@@ -89,12 +88,10 @@ void * writer_thr(void * arg) {
 				fprintf(fd, "Account number = %d [%d]: old balance = %6.2f, new balance = %6.2f\n", account_list[i].accno, update_acc[j].accno, temp_balance, update_acc[j].balance);
 				
 				found = TRUE;
-				
-				
-			}
-			
-			pthread_mutex_unlock(&rw_lock);
+			}			
         }
+        
+        pthread_mutex_unlock(&rw_lock);
 		
         if (!found)
             fprintf(fd, "Failed to find account number %d!\n", update_acc[j].accno);
@@ -157,19 +154,19 @@ void * reader_thr(void *arg) {
 	{
         /* Now read the shared data structure */
         found = FALSE;
+        
+		pthread_mutex_lock(&r_lock); // Lock the file against readers.
+		read_count++;
+
+		if(read_count == 1)
+			pthread_mutex_lock(&rw_lock); // Lock the file against writers.
+
+		pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 		
 		// This is the account list. So this will traverse ALL of the accounts until it finds the one fitting our account.
         for (i = 0; i < SIZE; i++) 
 		{
 			rest();
-			
-			pthread_mutex_lock(&r_lock); // Lock the file against readers.
-			read_count++;
-
-			if(read_count == 1)
-				pthread_mutex_lock(&rw_lock); // Lock the file against writers.
-
-			pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 			
 			if (account_list[i].accno == read_acc[j].accno) 
 			{
@@ -179,16 +176,16 @@ void * reader_thr(void *arg) {
 
 				fprintf(fd, "Account number = %d [%d], balance read = %6.2f\n", account_list[i].accno, read_acc[j].accno, read_acc[j].balance);  
 			}
-			
-			pthread_mutex_lock(&r_lock);
-			
-			read_count--;
-
-			if (read_count == 0)
-				pthread_mutex_unlock(&rw_lock); // Unlock the writer's restriction.
-
-			pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 		}
+		
+		pthread_mutex_lock(&r_lock);
+		
+		read_count--;
+
+		if (read_count == 0)
+			pthread_mutex_unlock(&rw_lock); // Unlock the writer's restriction.
+
+		pthread_mutex_unlock(&r_lock); // Unlock the reader's restriction.
 		
 		if (!found)
 		{
